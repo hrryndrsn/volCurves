@@ -1,0 +1,30 @@
+.body {
+    font-size: 14px;
+}
+
+input {
+    height: 20px;
+}
+
+.app-wrapper {
+    display: flex;
+    justify-content: space-around;
+}
+
+.app {
+    margin-top: 10vh;
+    width: 75vw;
+}
+
+.app h1 {
+    font-size: 2em;
+    margin-bottom: 30px;
+}
+
+.new-entry-inputs { 
+    margin-bottom: 30px;
+}
+
+.footer {
+    margin-top: 30px;
+}
