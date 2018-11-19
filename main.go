@@ -3,9 +3,12 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -55,19 +58,19 @@ type OrderBook struct {
 	Asks            []Ask   `json:"asks"`
 	Tstamp          int64   `json:"tstamp"`
 	Last            float64 `json:"last"`
-	Low             float64 `json:"low"`
-	High            float64 `json:"high"`
-	Mark            float64 `json:"mark"`
-	UPx             float64 `json:"uPx"`
-	UIx             string  `json:"uIx"`
-	IR              float64 `json:"iR"`
-	MarkIv          float64 `json:"markIv"`
-	AskIv           float64 `json:"askIv"`
-	BidIv           float64 `json:"bidIv"`
-	Delta           float64 `json:"delta"`
-	Gamma           float64 `json:"gamma"`
-	Vega            float64 `json:"vega"`
-	Theta           float64 `json:"theta"`
+	// Low             float64 `json:"low,omitempty"`
+	// High            float64 `json:"high,omitempty"`
+	Mark   float64 `json:"mark"`
+	UPx    float64 `json:"uPx"`
+	UIx    string  `json:"uIx"`
+	IR     float64 `json:"iR"`
+	MarkIv float64 `json:"markIv"`
+	AskIv  float64 `json:"askIv"`
+	BidIv  float64 `json:"bidIv"`
+	Delta  float64 `json:"delta"`
+	Gamma  float64 `json:"gamma"`
+	Vega   float64 `json:"vega"`
+	Theta  float64 `json:"theta"`
 }
 
 type Bid struct {
@@ -101,6 +104,7 @@ func main() {
 	// Route
 	router.GET("/instruments", getInstruments)
 	router.GET("/orderbooks", getOrderBooks)
+	router.GET("/concurrent", concurrentGetOB)
 
 	router.Run(":8080")
 }
@@ -131,17 +135,15 @@ func getInstruments(c *gin.Context) {
 		log.Fatalln(err)
 	}
 
+	//data is the main object
+
 	//send the unmarshalled data back to the caller
 	c.JSON(http.StatusOK, gin.H{"instruments": data})
 }
 
 func getOrderBooks(c *gin.Context) {
 	var responseData []OrderBook
-	// instruments := []string{"BTC-28DEC18-5250-C", "BTC-30NOV18-4000-P", "BTC-28JUN19-20000-C"}
 
-	// for i, v := range instruments {
-
-	// }
 	//get an option orderbook
 	data1, err := handleGetOrderBook("BTC-28JUN19-20000-C")
 	if err != nil {
@@ -197,4 +199,63 @@ func handleGetOrderBook(name string) (OrderBookResponse, error) {
 		log.Fatalln(err)
 	}
 	return data, nil
+}
+
+func concurrentGetOB(c *gin.Context) {
+	//change this function from a a handler to _in_ another handler and feed in the []string of instrument names
+	frags := []string{
+		"BTC-28JUN19-20000-C",
+		"BTC-30NOV18-4000-P",
+		"BTC-28JUN19-20000-C",
+		"BTC-28DEC18-8000-C",
+	}
+	baseUrl := "https://www.deribit.com/api/v1/public/getorderbook?instrument="
+	start := time.Now()
+	// var list []OrderBook
+
+	//////
+	var result []OrderBookResponse
+	var wg sync.WaitGroup
+
+	//loop over the fragments
+	for _, v := range frags {
+		// Increment the WaitGroup counter.
+		wg.Add(1)
+		// Launch a goroutine to fetch the URL.
+		go func(v string) {
+			var data OrderBookResponse
+			// Decrement the counter when the goroutine completes.
+			defer wg.Done()
+			// Fetch the URL.
+			url := baseUrl + v
+			fmt.Println("getting:", url)
+			res, err := http.Get(url)
+
+			//decode response`
+			body, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				log.Println("Routine exitng early: failed to read resp.body:", err)
+				return
+			}
+			defer res.Body.Close()
+			bx := []byte(body)
+			fmt.Println("body:", string(bx))
+
+			//unmarshall into the reponse struct
+			err = json.Unmarshal([]byte(body), &data)
+			if err != nil {
+				log.Println("Routine exitng early: unmarshal resp.body into Orderbook:", err)
+				return
+			}
+			result = append(result, data)
+		}(v)
+	}
+	// Wait for all HTTP fetches to complete.
+	wg.Wait()
+
+	responseData := result
+
+	fmt.Printf("%.2fs elapsed\n", time.Since(start).Seconds())
+	c.JSON(http.StatusOK, gin.H{"orderbooks": responseData})
+
 }
