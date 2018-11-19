@@ -104,7 +104,7 @@ func main() {
 	// Route
 	router.GET("/instruments", getInstruments)
 	router.GET("/orderbooks", getOrderBooks)
-	router.GET("/concurrent", concurrentGetOB)
+	// router.GET("/concurrent", concurrentGetOB)
 
 	router.Run(":8080")
 }
@@ -136,9 +136,23 @@ func getInstruments(c *gin.Context) {
 	}
 
 	//data is the main object
+	// we also want data.result array of Results
+	results := data.Result
+	var names []string
+
+	for _, v := range results {
+		names = append(names, v.InstrumentName)
+	}
+
+	books, err := concurrentGetOB(names)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find entry"})
+		log.Fatal(err)
+		return
+	}
 
 	//send the unmarshalled data back to the caller
-	c.JSON(http.StatusOK, gin.H{"instruments": data})
+	c.JSON(http.StatusOK, gin.H{"instruments": data, "names": names, "count": len(names), "orderbooks": books})
 }
 
 func getOrderBooks(c *gin.Context) {
@@ -192,7 +206,7 @@ func handleGetOrderBook(name string) (OrderBookResponse, error) {
 		log.Fatal(err)
 		return data, errors.New("failed reading body")
 	}
-	// fmt.Println(string(contents))
+
 	//unmarshall into the reponse struct
 	err = json.Unmarshal([]byte(contents), &data)
 	if err != nil {
@@ -201,24 +215,19 @@ func handleGetOrderBook(name string) (OrderBookResponse, error) {
 	return data, nil
 }
 
-func concurrentGetOB(c *gin.Context) {
+func concurrentGetOB(names []string) ([]OrderBook, error) {
 	//change this function from a a handler to _in_ another handler and feed in the []string of instrument names
-	frags := []string{
-		"BTC-28JUN19-20000-C",
-		"BTC-30NOV18-4000-P",
-		"BTC-28JUN19-20000-C",
-		"BTC-28DEC18-8000-C",
-	}
+
 	baseUrl := "https://www.deribit.com/api/v1/public/getorderbook?instrument="
 	start := time.Now()
 	// var list []OrderBook
 
 	//////
-	var result []OrderBookResponse
+	var result []OrderBook
 	var wg sync.WaitGroup
 
 	//loop over the fragments
-	for _, v := range frags {
+	for _, v := range names {
 		// Increment the WaitGroup counter.
 		wg.Add(1)
 		// Launch a goroutine to fetch the URL.
@@ -238,8 +247,8 @@ func concurrentGetOB(c *gin.Context) {
 				return
 			}
 			defer res.Body.Close()
-			bx := []byte(body)
-			fmt.Println("body:", string(bx))
+			// bx := []byte(body)
+			// fmt.Println("body:", string(bx))
 
 			//unmarshall into the reponse struct
 			err = json.Unmarshal([]byte(body), &data)
@@ -247,15 +256,13 @@ func concurrentGetOB(c *gin.Context) {
 				log.Println("Routine exitng early: unmarshal resp.body into Orderbook:", err)
 				return
 			}
-			result = append(result, data)
+			result = append(result, data.Result)
 		}(v)
 	}
 	// Wait for all HTTP fetches to complete.
 	wg.Wait()
 
-	responseData := result
-
 	fmt.Printf("%.2fs elapsed\n", time.Since(start).Seconds())
-	c.JSON(http.StatusOK, gin.H{"orderbooks": responseData})
+	return result, nil
 
 }
