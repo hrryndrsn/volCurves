@@ -135,7 +135,7 @@ func getInstruments(c *gin.Context) {
 		log.Fatalln(err)
 	}
 
-	//data is the main object
+	//datais the main object
 	// we also want data.result array of Results
 	results := data.Result
 	var names []string
@@ -152,7 +152,7 @@ func getInstruments(c *gin.Context) {
 	}
 
 	//send the unmarshalled data back to the caller
-	c.JSON(http.StatusOK, gin.H{"instruments": data, "names": names, "count": len(names), "orderbooks": books})
+	c.JSON(http.StatusOK, gin.H{"instruments": data.Result, "names": names, "count": len(names), "orderbooks": books})
 }
 
 func getOrderBooks(c *gin.Context) {
