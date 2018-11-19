@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -140,6 +139,9 @@ func getOrderBooks(c *gin.Context) {
 	var responseData []OrderBook
 	// instruments := []string{"BTC-28DEC18-5250-C", "BTC-30NOV18-4000-P", "BTC-28JUN19-20000-C"}
 
+	// for i, v := range instruments {
+
+	// }
 	//get an option orderbook
 	data1, err := handleGetOrderBook("BTC-28JUN19-20000-C")
 	if err != nil {
@@ -170,6 +172,7 @@ func getOrderBooks(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"orderbooks": responseData})
 }
 
+//handles get request, returns the orderbook response
 func handleGetOrderBook(name string) (OrderBookResponse, error) {
 	var data OrderBookResponse
 
@@ -187,7 +190,7 @@ func handleGetOrderBook(name string) (OrderBookResponse, error) {
 		log.Fatal(err)
 		return data, errors.New("failed reading body")
 	}
-	fmt.Println(string(contents))
+	// fmt.Println(string(contents))
 	//unmarshall into the reponse struct
 	err = json.Unmarshal([]byte(contents), &data)
 	if err != nil {
