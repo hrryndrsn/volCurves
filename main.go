@@ -89,6 +89,11 @@ type Ask struct {
 	CmAmount float64 `json:"cm_amount"`
 }
 
+type instrumentPair struct {
+	Instrument Result
+	OrderBook  OrderBook
+}
+
 func main() {
 
 	//routing
@@ -146,13 +151,16 @@ func getInstruments(c *gin.Context) {
 
 	//datais the main object
 	// we also want data.result array of Results
-	results := data.Result
+	results := data.Result // instruments in the API
 	//names list
 	var names []string
 	//expiration list
 	var expirs []string
+	//orders per expiration in a map
+	var sortedResults = make(map[string][]Result)
 
-	var sortedResults []Result
+	//combine intrument and orderbook slice
+	var pairs []instrumentPair
 
 	//collect the names into results list
 	for _, v := range results {
@@ -162,13 +170,18 @@ func getInstruments(c *gin.Context) {
 	for _, v := range results {
 		expirs = append(expirs, v.Expiration)
 	}
-	//collect options for each expir
-	for _, v := range results {
+	//for each expiration
+	for _, exp := range expirs {
+		var arr []Result
 
-		if v.Expiration == "2018-12-28 08:00:00 GMT" {
-			sortedResults = append(sortedResults, v)
+		//loop through the rulsts
+		for _, v := range results {
+			//check if the expiration data matchs
+			if v.Expiration == exp {
+				arr = append(arr, v)
+			}
 		}
-
+		sortedResults[string(exp)] = arr
 	}
 
 	uniqueSlice := unique(expirs)
@@ -180,6 +193,20 @@ func getInstruments(c *gin.Context) {
 		return
 	}
 
+	//each instrument find your order book
+	for _, instrument := range results {
+		for _, book := range books {
+			if instrument.InstrumentName == book.Instrument {
+				newPair := instrumentPair{
+					Instrument: instrument,
+					OrderBook:  book,
+				}
+
+				pairs = append(pairs, newPair)
+			}
+		}
+	}
+
 	//send the unmarshalled data back to the caller
 	c.JSON(http.StatusOK, gin.H{
 		"instruments": data.Result,
@@ -188,9 +215,11 @@ func getInstruments(c *gin.Context) {
 		"orderbooks":  books,
 		"expirations": uniqueSlice,
 		"sorted":      sortedResults,
+		"pairs":       pairs,
 	})
 }
 
+//removes duplciate strings from a []string
 func unique(stringSlice []string) []string {
 	keys := make(map[string]bool)
 	list := []string{}
