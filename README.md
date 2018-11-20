@@ -3,8 +3,7 @@
 start with `go run main.go`
 
 
-
-##BE to do 
+## BE to do 
 
 * sort pairs instead of soring just the intruments 
 

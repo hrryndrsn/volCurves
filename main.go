@@ -94,6 +94,12 @@ type instrumentPair struct {
 	OrderBook  OrderBook
 }
 
+type SortedPairs struct {
+	ftrArr  []instrumentPair
+	putArr  []instrumentPair
+	callArr []instrumentPair
+}
+
 func main() {
 
 	//routing
@@ -157,7 +163,7 @@ func getInstruments(c *gin.Context) {
 	//expiration list
 	var expirs []string
 	//orders per expiration in a map
-	var sortedResults = make(map[string][]Result)
+	var sortedResults = make(map[string][]instrumentPair)
 
 	//combine intrument and orderbook slice
 	var pairs []instrumentPair
@@ -169,19 +175,6 @@ func getInstruments(c *gin.Context) {
 	//collect expiration dats into expirs list
 	for _, v := range results {
 		expirs = append(expirs, v.Expiration)
-	}
-	//for each expiration
-	for _, exp := range expirs {
-		var arr []Result
-
-		//loop through the rulsts
-		for _, v := range results {
-			//check if the expiration data matchs
-			if v.Expiration == exp {
-				arr = append(arr, v)
-			}
-		}
-		sortedResults[string(exp)] = arr
 	}
 
 	uniqueSlice := unique(expirs)
@@ -205,6 +198,35 @@ func getInstruments(c *gin.Context) {
 				pairs = append(pairs, newPair)
 			}
 		}
+	}
+
+	//construct sorted map
+	//for each expiration
+	for _, exp := range expirs {
+		var sorted []instrumentPair
+
+		//loop through the results
+		for _, v := range pairs {
+			//check if the expiration data matchs
+			if v.Instrument.Expiration == exp {
+				sorted = append(sorted, v)
+				// //check if its a option or a future
+				// if v.Instrument.Kind == "option" {
+				// 	//check if its a put or a call
+				// 	if v.Instrument.OptionType == "call" {
+				// 		//must be a call
+				// 		sorted.callArr = append(sorted.callArr, v)
+				// 	} else {
+				// 		//must be a put
+				// 		sorted.putArr = append(sorted.putArr, v)
+				// 	}
+				// } else {
+				// 	//must be a kind: future
+				// 	sorted.ftrArr = append(sorted.ftrArr, v)
+				// }
+			}
+		}
+		sortedResults[string(exp)] = sorted
 	}
 
 	//send the unmarshalled data back to the caller
