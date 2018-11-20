@@ -2,8 +2,12 @@
 
 start with `go run main.go`
 
-## To do
 
-* rewrite the d3 chart to take in `markIv`, `askIv`, `bidIv` `instruments.<instrument>.strike`
 
-create a front end for this thing
+##BE to do 
+
+* sort pairs instead of soring just the intruments 
+
+## FE To do
+
+* create a front end for this thing
