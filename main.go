@@ -57,7 +57,7 @@ type OrderBook struct {
 	Bids            []Bid   `json:"bids"`
 	Asks            []Ask   `json:"asks"`
 	Tstamp          int64   `json:"tstamp"`
-	Last            float64 `json:"last"`
+	// Last            float64 `json:"last,omitempty"`
 	// Low             float64 `json:"low,omitempty"`
 	// High            float64 `json:"high,omitempty"`
 	Mark   float64 `json:"mark"`
@@ -101,10 +101,19 @@ func main() {
 		c.HTML(http.StatusOK, "index.tmpl.html", nil)
 	})
 
+	router.GET("/test", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.tmpl.html", nil)
+		stringSlice := []string{"derp", "derp", "derp", "zord"}
+		fmt.Println(stringSlice)
+		uniqueSlice := unique(stringSlice)
+		fmt.Println(uniqueSlice)
+		c.JSON(http.StatusOK, gin.H{"message": "ok"})
+	})
+
 	// Route
 	router.GET("/instruments", getInstruments)
 	router.GET("/orderbooks", getOrderBooks)
-	// router.GET("/concurrent", concurrentGetOB)
+	// router.GET("", concurrentGetOB)
 
 	router.Run(":8080")
 }
@@ -138,11 +147,31 @@ func getInstruments(c *gin.Context) {
 	//datais the main object
 	// we also want data.result array of Results
 	results := data.Result
+	//names list
 	var names []string
+	//expiration list
+	var expirs []string
 
+	var sortedResults []Result
+
+	//collect the names into results list
 	for _, v := range results {
 		names = append(names, v.InstrumentName)
 	}
+	//collect expiration dats into expirs list
+	for _, v := range results {
+		expirs = append(expirs, v.Expiration)
+	}
+	//collect options for each expir
+	for _, v := range results {
+
+		if v.Expiration == "2018-12-28 08:00:00 GMT" {
+			sortedResults = append(sortedResults, v)
+		}
+
+	}
+
+	uniqueSlice := unique(expirs)
 
 	books, err := concurrentGetOB(names)
 	if err != nil {
@@ -152,7 +181,26 @@ func getInstruments(c *gin.Context) {
 	}
 
 	//send the unmarshalled data back to the caller
-	c.JSON(http.StatusOK, gin.H{"instruments": data.Result, "names": names, "count": len(names), "orderbooks": books})
+	c.JSON(http.StatusOK, gin.H{
+		"instruments": data.Result,
+		"names":       names,
+		"count":       len(names),
+		"orderbooks":  books,
+		"expirations": uniqueSlice,
+		"sorted":      sortedResults,
+	})
+}
+
+func unique(stringSlice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+	for _, entry := range stringSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
 }
 
 func getOrderBooks(c *gin.Context) {
