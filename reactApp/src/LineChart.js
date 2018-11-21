@@ -3,7 +3,7 @@ import "./App.css";
 import * as d3 from "d3";
 
 const width = 650;
-const height = 400;
+const height = 650;
 const margin = { top: 20, right: 5, bottom: 20, left: 35 };
 
 class LineChart extends Component {
@@ -43,18 +43,23 @@ class LineChart extends Component {
       };
     });
 
-    // console.log("puts", putArr)
-    // console.log("Put extent:", extent)
-    // console.log("askIvextent:", min, max)
-    // console.log("bar data:", bars)
+    
 
-    return { bars, xScale, yScale };
+    var line = d3.line()
+      .x(d => xScale(d.Instrument.strike))
+      .y(d => yScale(d.OrderBook.askIv))
+
+    var newline = line(putArr);
+    console.log(newline);
+
+    return { bars, newline, xScale, yScale };
   }
 
   render() {
     const data = this.props.data;
     const gridData = this.calculateGraph(data);
     const bars = gridData.bars;
+    const pd = gridData.newline
     if (data) {
       //we have data
       return (
@@ -68,7 +73,9 @@ class LineChart extends Component {
                 height={d.height}
                 fill={d.fill}
               />
+              
             ))}
+            <path d={pd} fill="none" stroke="black" />
           </svg>
           <div>{console.log(bars)}</div>
         </div>

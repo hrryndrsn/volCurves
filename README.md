@@ -5,7 +5,7 @@ start with `go run main.go`
 
 ## BE to do 
 
-* sort pairs instead of soring just the intruments 
+order results by strike ASC
 
 ## FE To do
 
