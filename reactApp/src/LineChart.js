@@ -7,38 +7,70 @@ const height = 400;
 const margin = { top: 20, right: 5, bottom: 20, left: 35 };
 
 class LineChart extends Component {
-
   state = {
     bars: []
   };
 
   calculateGraph(data) {
     const expr = data.sorted[Object.keys(data.sorted)[1]];
-    // if (!data) return {};
+    if (!data) return {};
     const putArr = expr.Puts;
-    const callArr = expr.Calls;
+    // const callArr = expr.Calls;
 
     // X axis is the strike
     // get min and max
-    // const extent = d3.extent(data, d => d)
-    console.log("puts", putArr)
-    console.log("calls", callArr)
-    // return JSON.stringify(data.sorted);
+    const extent = d3.extent(putArr, d => d.Instrument.strike);
+    const xScale = d3
+      .scaleLinear(extent)
+      .domain(extent)
+      .range([margin.left, width - margin.right]);
 
-    // Y axis is Implied vol
-    // 1 line Call bid LV
-    // 2 line Call ask LV
-    // 3 line Put ask LV
+    // 2. map vol to y-position
+    // get min/max of high temp
+    const [min, max] = d3.extent(putArr, d => d.OrderBook.askIv);
+    const yScale = d3
+      .scaleLinear()
+      .domain([Math.min(min, 0), max])
+      .range([height - margin.bottom, margin.top]);
+
+    // array of objects: x: y., height
+    const bars = putArr.map(d => {
+      return {
+        x: xScale(d.Instrument.strike),
+        y: yScale(d.OrderBook.askIv),
+        height: 10,
+        fill: "black"
+      };
+    });
+
+    // console.log("puts", putArr)
+    // console.log("Put extent:", extent)
+    // console.log("askIvextent:", min, max)
+    // console.log("bar data:", bars)
+
+    return { bars, xScale, yScale };
   }
 
   render() {
     const data = this.props.data;
+    const gridData = this.calculateGraph(data);
+    const bars = gridData.bars;
     if (data) {
       //we have data
       return (
         <div>
-          <svg width={width} height={height} />
-          <div>{console.log(this.calculateGraph(data))}</div>
+          <svg width={width} height={height}>
+            {bars.map(d => (
+              <rect
+                x={d.x}
+                y={d.y}
+                width={10}
+                height={d.height}
+                fill={d.fill}
+              />
+            ))}
+          </svg>
+          <div>{console.log(bars)}</div>
         </div>
       );
     } else {
