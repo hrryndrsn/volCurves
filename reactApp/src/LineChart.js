@@ -8,8 +8,14 @@ const margin = { top: 20, right: 5, bottom: 20, left: 35 };
 
 class LineChart extends Component {
   state = {
-    bars: []
+    bars: [],
+    myRef: React.createRef()
   };
+
+  constructor(props) {
+    super(props)
+    this.myRef = React.createRef(); 
+  }
 
 
   calculateGraph(data) {
@@ -34,7 +40,7 @@ class LineChart extends Component {
       .domain(extent)
       .range([margin.left, width - margin.right]);
 
-    // 2. map vol to y-position
+    //  map vol to y-position
     // get min/max of high temp
     const [min, max] = d3.extent(orderedPuts, d => d.OrderBook.askIv);
     const yScale = d3
@@ -52,34 +58,39 @@ class LineChart extends Component {
       };
     });
 
-    
-    
+    //line generator
     var line = d3.line()
       .x(d => xScale(d.Instrument.strike))
       .y(d => yScale(d.OrderBook.askIv))
 
-    var newline = line(orderedPuts);
+    var putLine = line(orderedPuts);
     var callLine = line(orderedCalls);
 
-    return { bars, newline, callLine, xScale, yScale };
+    
+    console.log(this.myRef)
+
+    return { bars, putLine, callLine, xScale, yScale };
   }
 
-  
 
   render() {
     const data = this.props.data;
     const gridData = this.calculateGraph(data);
-    const pd = gridData.newline
+    const pd = gridData.putLine
     const cd = gridData.callLine
+
+
     if (data) {
       //we have data
       return (
         <div>
           <svg width={width} height={height}>
+            {/* lines */}
             <path d={pd} fill="none" stroke="red" />
             <path d={cd} fill="none" stroke="blue" />
-            <g transform="translate(200, 200)" ref="g" />
-            
+            {/* axis */}
+            <g id="xAxis" ref={this.myRef} transform={`translate(0, ${height - margin.bottom})`} />
+            <g id="yAxis" transform={`translate(${margin.left}, 0)`} />            
           </svg>
         </div>
       );
