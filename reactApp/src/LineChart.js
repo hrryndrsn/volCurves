@@ -3,7 +3,7 @@ import "./App.css";
 import * as d3 from "d3";
 
 const width = 650;
-const height = 650;
+const height = 400;
 const margin = { top: 20, right: 5, bottom: 20, left: 35 };
 
 class LineChart extends Component {
@@ -11,15 +11,24 @@ class LineChart extends Component {
     bars: []
   };
 
+
   calculateGraph(data) {
     const expr = data.sorted[Object.keys(data.sorted)[1]];
     if (!data) return {};
     const putArr = expr.Puts;
-    // const callArr = expr.Calls;
+    const callArr = expr.Calls;
+
+    //order by strike price
+    var orderedPuts = putArr.sort(function(a, b) {
+      return a.Instrument.strike - b.Instrument.strike;
+    });
+    var orderedCalls = callArr.sort(function(a, b) {
+      return a.Instrument.strike - b.Instrument.strike;
+    });
 
     // X axis is the strike
     // get min and max
-    const extent = d3.extent(putArr, d => d.Instrument.strike);
+    const extent = d3.extent(orderedPuts, d => d.Instrument.strike);
     const xScale = d3
       .scaleLinear(extent)
       .domain(extent)
@@ -27,7 +36,7 @@ class LineChart extends Component {
 
     // 2. map vol to y-position
     // get min/max of high temp
-    const [min, max] = d3.extent(putArr, d => d.OrderBook.askIv);
+    const [min, max] = d3.extent(orderedPuts, d => d.OrderBook.askIv);
     const yScale = d3
       .scaleLinear()
       .domain([Math.min(min, 0), max])
@@ -44,40 +53,34 @@ class LineChart extends Component {
     });
 
     
-
+    
     var line = d3.line()
       .x(d => xScale(d.Instrument.strike))
       .y(d => yScale(d.OrderBook.askIv))
 
-    var newline = line(putArr);
-    console.log(newline);
+    var newline = line(orderedPuts);
+    var callLine = line(orderedCalls);
 
-    return { bars, newline, xScale, yScale };
+    return { bars, newline, callLine, xScale, yScale };
   }
+
+  
 
   render() {
     const data = this.props.data;
     const gridData = this.calculateGraph(data);
-    const bars = gridData.bars;
     const pd = gridData.newline
+    const cd = gridData.callLine
     if (data) {
       //we have data
       return (
         <div>
           <svg width={width} height={height}>
-            {bars.map(d => (
-              <rect
-                x={d.x}
-                y={d.y}
-                width={10}
-                height={d.height}
-                fill={d.fill}
-              />
-              
-            ))}
-            <path d={pd} fill="none" stroke="black" />
+            <path d={pd} fill="none" stroke="red" />
+            <path d={cd} fill="none" stroke="blue" />
+            <g transform="translate(200, 200)" ref="g" />
+            
           </svg>
-          <div>{console.log(bars)}</div>
         </div>
       );
     } else {
